@@ -25,6 +25,22 @@ inputs:
     description: "If true, poll /v1/runs/{id} until succeeded or failed"
     required: false
     default: "true"
+  base_run_id:
+    description: "Optional explicit base Spec42 run id used when generating a PR summary"
+    required: false
+    default: ""
+  generate_pr_summary:
+    description: "If true, fetch a GitHub-ready PR summary Markdown file after the head run completes"
+    required: false
+    default: "false"
+  public_base_url:
+    description: "Externally reachable Spec42 Server URL used inside PR summary links; defaults to server_url"
+    required: false
+    default: ""
+  pr_summary_path:
+    description: "Optional path where the PR summary Markdown should be written"
+    required: false
+    default: ""
   github_token:
     description: "Optional GitHub token for commit status reporting"
     required: false
@@ -48,6 +64,12 @@ outputs:
   run_api_url:
     description: "Run API URL on Spec42 Server"
     value: ${{ steps.submit.outputs.run_api_url }}
+  pr_summary_path:
+    description: "Path to the generated PR summary Markdown file when generate_pr_summary=true"
+    value: ${{ steps.submit.outputs.pr_summary_path }}
+  pr_summary_api_url:
+    description: "PR summary API URL when generate_pr_summary=true"
+    value: ${{ steps.submit.outputs.pr_summary_api_url }}
   github_status_state:
     description: "GitHub commit status state (when enabled)"
     value: ${{ steps.submit.outputs.github_status_state }}
@@ -65,6 +87,10 @@ runs:
         INPUT_POLL_SECONDS: ${{ inputs.poll_seconds }}
         INPUT_TIMEOUT_SECONDS: ${{ inputs.timeout_seconds }}
         INPUT_WAIT_FOR_COMPLETION: ${{ inputs.wait_for_completion }}
+        INPUT_BASE_RUN_ID: ${{ inputs.base_run_id }}
+        INPUT_GENERATE_PR_SUMMARY: ${{ inputs.generate_pr_summary }}
+        INPUT_PUBLIC_BASE_URL: ${{ inputs.public_base_url }}
+        INPUT_PR_SUMMARY_PATH: ${{ inputs.pr_summary_path }}
         INPUT_GITHUB_TOKEN: ${{ inputs.github_token }}
         INPUT_UPDATE_GITHUB_STATUS: ${{ inputs.update_github_status }}
         INPUT_GITHUB_STATUS_CONTEXT: ${{ inputs.github_status_context }}

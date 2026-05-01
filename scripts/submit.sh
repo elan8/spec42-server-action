@@ -7,10 +7,15 @@ ANALYSIS_ROOT="${INPUT_ANALYSIS_ROOT:-.}"
 POLL_SECONDS="${INPUT_POLL_SECONDS:-5}"
 TIMEOUT_SECONDS="${INPUT_TIMEOUT_SECONDS:-1800}"
 WAIT_FOR_COMPLETION="${INPUT_WAIT_FOR_COMPLETION:-true}"
+BASE_RUN_ID="${INPUT_BASE_RUN_ID:-}"
+GENERATE_PR_SUMMARY="${INPUT_GENERATE_PR_SUMMARY:-false}"
+PUBLIC_BASE_URL="${INPUT_PUBLIC_BASE_URL:-$SERVER_URL}"
+PR_SUMMARY_PATH="${INPUT_PR_SUMMARY_PATH:-}"
 GITHUB_TOKEN_INPUT="${INPUT_GITHUB_TOKEN:-}"
 UPDATE_GITHUB_STATUS="${INPUT_UPDATE_GITHUB_STATUS:-false}"
 GITHUB_STATUS_CONTEXT="${INPUT_GITHUB_STATUS_CONTEXT:-spec42/server}"
 GITHUB_STATUS_STATE=""
+PR_SUMMARY_API_URL=""
 
 if [[ ! -d "$ANALYSIS_ROOT" ]]; then
   echo "analysis_root does not exist or is not a directory: $ANALYSIS_ROOT" >&2
@@ -25,6 +30,17 @@ fi
 if [[ -z "$SERVER_URL" ]]; then
   echo "server_url is required" >&2
   exit 1
+fi
+
+if [[ "$GENERATE_PR_SUMMARY" == "true" ]]; then
+  if [[ "$WAIT_FOR_COMPLETION" != "true" ]]; then
+    echo "generate_pr_summary=true requires wait_for_completion=true" >&2
+    exit 1
+  fi
+  if [[ -z "$BASE_RUN_ID" ]]; then
+    echo "generate_pr_summary=true requires base_run_id" >&2
+    exit 1
+  fi
 fi
 
 WORK_DIR="$(mktemp -d)"
@@ -208,9 +224,31 @@ PY
   done
 fi
 
+if [[ "$GENERATE_PR_SUMMARY" == "true" ]]; then
+  if [[ "$RUN_STATUS" != "succeeded" ]]; then
+    echo "Cannot generate PR summary because Spec42 run status is $RUN_STATUS" >&2
+    exit 1
+  fi
+
+  if [[ -z "$PR_SUMMARY_PATH" ]]; then
+    PR_SUMMARY_PATH="${RUNNER_TEMP:-$PWD}/spec42-pr-summary-${RUN_ID}.md"
+  fi
+  mkdir -p "$(dirname "$PR_SUMMARY_PATH")"
+
+  PUBLIC_BASE_URL_ENCODED="$(python -c 'from urllib.parse import quote; import sys; print(quote(sys.argv[1], safe=""))' "$PUBLIC_BASE_URL")"
+  PR_SUMMARY_API_URL="$SERVER_URL/v1/runs/$BASE_RUN_ID/pr-summary/$RUN_ID?public_base_url=$PUBLIC_BASE_URL_ENCODED"
+  curl --fail-with-body --silent --show-error \
+    -H "Authorization: Bearer $TOKEN" \
+    "$PR_SUMMARY_API_URL" \
+    > "$PR_SUMMARY_PATH"
+  echo "Wrote Spec42 PR summary: $PR_SUMMARY_PATH"
+fi
+
 {
   echo "run_id=$RUN_ID"
   echo "run_status=$RUN_STATUS"
   echo "run_api_url=$RUN_API_URL"
+  echo "pr_summary_path=$PR_SUMMARY_PATH"
+  echo "pr_summary_api_url=$PR_SUMMARY_API_URL"
   echo "github_status_state=$GITHUB_STATUS_STATE"
 } >> "$GITHUB_OUTPUT"
