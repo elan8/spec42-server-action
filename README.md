@@ -27,7 +27,7 @@ jobs:
 
       - name: Submit to Spec42
         id: spec42
-        uses: your-org/spec42-server-action@v1
+        uses: elan8/spec42-server-action@v1
         with:
           server_url: ${{ secrets.SPEC42_SERVER_URL }}
           project_token: ${{ secrets.SPEC42_PROJECT_TOKEN }}
