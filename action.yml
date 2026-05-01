@@ -25,6 +25,18 @@ inputs:
     description: "If true, poll /v1/runs/{id} until succeeded or failed"
     required: false
     default: "true"
+  github_token:
+    description: "Optional GitHub token for commit status reporting"
+    required: false
+    default: ""
+  update_github_status:
+    description: "If true, publish pending/final commit status to GitHub"
+    required: false
+    default: "false"
+  github_status_context:
+    description: "GitHub commit status context name"
+    required: false
+    default: "spec42/server"
 
 outputs:
   run_id:
@@ -36,6 +48,9 @@ outputs:
   run_api_url:
     description: "Run API URL on Spec42 Server"
     value: ${{ steps.submit.outputs.run_api_url }}
+  github_status_state:
+    description: "GitHub commit status state (when enabled)"
+    value: ${{ steps.submit.outputs.github_status_state }}
 
 runs:
   using: "composite"
@@ -50,4 +65,7 @@ runs:
         INPUT_POLL_SECONDS: ${{ inputs.poll_seconds }}
         INPUT_TIMEOUT_SECONDS: ${{ inputs.timeout_seconds }}
         INPUT_WAIT_FOR_COMPLETION: ${{ inputs.wait_for_completion }}
+        INPUT_GITHUB_TOKEN: ${{ inputs.github_token }}
+        INPUT_UPDATE_GITHUB_STATUS: ${{ inputs.update_github_status }}
+        INPUT_GITHUB_STATUS_CONTEXT: ${{ inputs.github_status_context }}
       run: ${{ github.action_path }}/scripts/submit.sh

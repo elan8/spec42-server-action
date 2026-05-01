@@ -7,6 +7,10 @@ ANALYSIS_ROOT="${INPUT_ANALYSIS_ROOT:-.}"
 POLL_SECONDS="${INPUT_POLL_SECONDS:-5}"
 TIMEOUT_SECONDS="${INPUT_TIMEOUT_SECONDS:-1800}"
 WAIT_FOR_COMPLETION="${INPUT_WAIT_FOR_COMPLETION:-true}"
+GITHUB_TOKEN_INPUT="${INPUT_GITHUB_TOKEN:-}"
+UPDATE_GITHUB_STATUS="${INPUT_UPDATE_GITHUB_STATUS:-false}"
+GITHUB_STATUS_CONTEXT="${INPUT_GITHUB_STATUS_CONTEXT:-spec42/server}"
+GITHUB_STATUS_STATE=""
 
 if [[ ! -d "$ANALYSIS_ROOT" ]]; then
   echo "analysis_root does not exist or is not a directory: $ANALYSIS_ROOT" >&2
@@ -108,6 +112,50 @@ RUN_API_URL="$SERVER_URL/v1/runs/$RUN_ID"
 RUN_STATUS="queued"
 echo "Submitted Spec42 run: $RUN_ID"
 
+post_github_status() {
+  local state="$1"
+  local description="$2"
+  if [[ "$UPDATE_GITHUB_STATUS" != "true" ]]; then
+    return 0
+  fi
+  if [[ -z "$GITHUB_TOKEN_INPUT" ]]; then
+    echo "update_github_status=true requires github_token" >&2
+    exit 1
+  fi
+  if [[ -z "${GITHUB_REPOSITORY:-}" || -z "${GITHUB_SHA:-}" || -z "${GITHUB_API_URL:-}" ]]; then
+    echo "missing GitHub context (GITHUB_REPOSITORY/GITHUB_SHA/GITHUB_API_URL) for status update" >&2
+    exit 1
+  fi
+
+  local status_api="${GITHUB_API_URL%/}/repos/${GITHUB_REPOSITORY}/statuses/${GITHUB_SHA}"
+  local payload_path="$WORK_DIR/github-status-${state}.json"
+  python - <<'PY' "$payload_path" "$state" "$description" "$RUN_API_URL" "$GITHUB_STATUS_CONTEXT"
+import json
+import sys
+with open(sys.argv[1], "w", encoding="utf-8") as f:
+    json.dump(
+        {
+            "state": sys.argv[2],
+            "description": sys.argv[3],
+            "target_url": sys.argv[4],
+            "context": sys.argv[5],
+        },
+        f,
+    )
+PY
+
+  curl --fail-with-body --silent --show-error \
+    -X POST "$status_api" \
+    -H "Authorization: Bearer $GITHUB_TOKEN_INPUT" \
+    -H "Accept: application/vnd.github+json" \
+    -H "Content-Type: application/json" \
+    --data-binary "@${payload_path}" \
+    > /dev/null
+  GITHUB_STATUS_STATE="$state"
+}
+
+post_github_status "pending" "Spec42 analysis in progress"
+
 if [[ "$WAIT_FOR_COMPLETION" == "true" ]]; then
   START_TS="$(date +%s)"
   while true; do
@@ -130,10 +178,12 @@ PY
 
     if [[ "$RUN_STATUS" == "succeeded" ]]; then
       echo "Spec42 run succeeded: $RUN_ID"
+      post_github_status "success" "Spec42 analysis succeeded"
       break
     fi
     if [[ "$RUN_STATUS" == "failed" ]]; then
       echo "Spec42 run failed: $RUN_ID" >&2
+      post_github_status "failure" "Spec42 analysis failed"
       python - <<'PY' "$RUN_RESPONSE_PATH"
 import json
 import sys
@@ -150,6 +200,7 @@ PY
     ELAPSED=$((NOW_TS - START_TS))
     if (( ELAPSED >= TIMEOUT_SECONDS )); then
       echo "Timed out waiting for Spec42 run $RUN_ID after ${TIMEOUT_SECONDS}s" >&2
+      post_github_status "error" "Spec42 analysis timed out"
       exit 1
     fi
 
@@ -161,4 +212,5 @@ fi
   echo "run_id=$RUN_ID"
   echo "run_status=$RUN_STATUS"
   echo "run_api_url=$RUN_API_URL"
+  echo "github_status_state=$GITHUB_STATUS_STATE"
 } >> "$GITHUB_OUTPUT"
