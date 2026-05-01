@@ -1,0 +1,53 @@
+name: "Spec42 Server Submit"
+description: "Submit a source snapshot to Spec42 Server and optionally wait for run completion."
+author: "Spec42"
+
+inputs:
+  server_url:
+    description: "Spec42 Server base URL, for example https://spec42.example.com"
+    required: true
+  project_token:
+    description: "Spec42 project token used as Bearer auth"
+    required: true
+  analysis_root:
+    description: "Path to analyze and upload as workspace zip"
+    required: false
+    default: "."
+  poll_seconds:
+    description: "Polling interval in seconds when waiting for completion"
+    required: false
+    default: "5"
+  timeout_seconds:
+    description: "Maximum wait time in seconds when wait_for_completion is true"
+    required: false
+    default: "1800"
+  wait_for_completion:
+    description: "If true, poll /v1/runs/{id} until succeeded or failed"
+    required: false
+    default: "true"
+
+outputs:
+  run_id:
+    description: "Created Spec42 run id"
+    value: ${{ steps.submit.outputs.run_id }}
+  run_status:
+    description: "Final run status when wait_for_completion=true, otherwise queued"
+    value: ${{ steps.submit.outputs.run_status }}
+  run_api_url:
+    description: "Run API URL on Spec42 Server"
+    value: ${{ steps.submit.outputs.run_api_url }}
+
+runs:
+  using: "composite"
+  steps:
+    - name: Submit analysis request
+      id: submit
+      shell: bash
+      env:
+        INPUT_SERVER_URL: ${{ inputs.server_url }}
+        INPUT_PROJECT_TOKEN: ${{ inputs.project_token }}
+        INPUT_ANALYSIS_ROOT: ${{ inputs.analysis_root }}
+        INPUT_POLL_SECONDS: ${{ inputs.poll_seconds }}
+        INPUT_TIMEOUT_SECONDS: ${{ inputs.timeout_seconds }}
+        INPUT_WAIT_FOR_COMPLETION: ${{ inputs.wait_for_completion }}
+      run: ${{ github.action_path }}/scripts/submit.sh
