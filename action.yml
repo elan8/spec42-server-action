@@ -118,4 +118,4 @@ runs:
         INPUT_GITHUB_TOKEN: ${{ inputs.github_token }}
         INPUT_UPDATE_GITHUB_STATUS: ${{ inputs.update_github_status }}
         INPUT_GITHUB_STATUS_CONTEXT: ${{ inputs.github_status_context }}
-      run: ${{ github.action_path }}/scripts/submit.sh
+      run: bash "${{ github.action_path }}/scripts/submit.sh"
