@@ -124,6 +124,10 @@ permissions:
   statuses: write
 ```
 
+Status publishing is best-effort. If GitHub rejects the status update, for
+example on a restricted fork workflow token, the action warns and continues the
+Spec42 analysis run.
+
 If `post_pr_comment: true`, also grant:
 
 ```yaml

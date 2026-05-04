@@ -218,13 +218,16 @@ with open(sys.argv[1], "w", encoding="utf-8") as f:
     )
 PY
 
-  curl --fail-with-body --silent --show-error \
+  if ! curl --fail-with-body --silent --show-error \
     -X POST "$status_api" \
     -H "Authorization: token $GITHUB_TOKEN_INPUT" \
     -H "Accept: application/vnd.github+json" \
     -H "Content-Type: application/json" \
     --data-binary "@${payload_path}" \
-    > /dev/null
+    > /dev/null; then
+    echo "warning: unable to publish GitHub status '$state'; continuing Spec42 analysis" >&2
+    return 0
+  fi
   GITHUB_STATUS_STATE="$state"
 }
 
