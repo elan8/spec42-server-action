@@ -29,10 +29,22 @@ inputs:
     description: "Optional explicit base Spec42 run id used when generating a PR summary"
     required: false
     default: ""
+  base_branch:
+    description: "Optional base branch for automatic base run lookup; defaults to pull_request.base.ref"
+    required: false
+    default: ""
   generate_pr_summary:
     description: "If true, fetch a GitHub-ready PR summary Markdown file after the head run completes"
     required: false
     default: "false"
+  post_pr_comment:
+    description: "If true, create or update a pull request comment with the generated PR summary"
+    required: false
+    default: "false"
+  pr_comment_marker:
+    description: "Hidden marker used to find and update the existing Spec42 pull request comment"
+    required: false
+    default: "<!-- spec42-pr-summary -->"
   public_base_url:
     description: "Externally reachable Spec42 Server URL used inside PR summary links; defaults to server_url"
     required: false
@@ -70,6 +82,15 @@ outputs:
   pr_summary_api_url:
     description: "PR summary API URL when generate_pr_summary=true"
     value: ${{ steps.submit.outputs.pr_summary_api_url }}
+  base_run_id:
+    description: "Resolved base Spec42 run id used for PR summary generation"
+    value: ${{ steps.submit.outputs.base_run_id }}
+  pr_comment_url:
+    description: "GitHub PR comment URL when post_pr_comment=true"
+    value: ${{ steps.submit.outputs.pr_comment_url }}
+  pr_comment_action:
+    description: "Whether the GitHub PR comment was created or updated"
+    value: ${{ steps.submit.outputs.pr_comment_action }}
   github_status_state:
     description: "GitHub commit status state (when enabled)"
     value: ${{ steps.submit.outputs.github_status_state }}
@@ -88,7 +109,10 @@ runs:
         INPUT_TIMEOUT_SECONDS: ${{ inputs.timeout_seconds }}
         INPUT_WAIT_FOR_COMPLETION: ${{ inputs.wait_for_completion }}
         INPUT_BASE_RUN_ID: ${{ inputs.base_run_id }}
+        INPUT_BASE_BRANCH: ${{ inputs.base_branch }}
         INPUT_GENERATE_PR_SUMMARY: ${{ inputs.generate_pr_summary }}
+        INPUT_POST_PR_COMMENT: ${{ inputs.post_pr_comment }}
+        INPUT_PR_COMMENT_MARKER: ${{ inputs.pr_comment_marker }}
         INPUT_PUBLIC_BASE_URL: ${{ inputs.public_base_url }}
         INPUT_PR_SUMMARY_PATH: ${{ inputs.pr_summary_path }}
         INPUT_GITHUB_TOKEN: ${{ inputs.github_token }}
