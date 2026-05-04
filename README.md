@@ -37,7 +37,7 @@ jobs:
           timeout_seconds: 1800
           wait_for_completion: true
           update_github_status: true
-          github_token: ${{ secrets.GITHUB_TOKEN }}
+          github_token: ${{ github.token }}
           github_status_context: spec42/server
 
       - name: Show run

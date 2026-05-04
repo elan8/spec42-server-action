@@ -14,7 +14,10 @@ POST_PR_COMMENT="${INPUT_POST_PR_COMMENT:-false}"
 PR_COMMENT_MARKER="${INPUT_PR_COMMENT_MARKER:-<!-- spec42-pr-summary -->}"
 PUBLIC_BASE_URL="${INPUT_PUBLIC_BASE_URL:-$SERVER_URL}"
 PR_SUMMARY_PATH="${INPUT_PR_SUMMARY_PATH:-}"
+# Trim: composite/workflow inputs can carry stray whitespace/newlines and break auth.
 GITHUB_TOKEN_INPUT="${INPUT_GITHUB_TOKEN:-}"
+GITHUB_TOKEN_INPUT="${GITHUB_TOKEN_INPUT#"${GITHUB_TOKEN_INPUT%%[![:space:]]*}"}"
+GITHUB_TOKEN_INPUT="${GITHUB_TOKEN_INPUT%"${GITHUB_TOKEN_INPUT##*[![:space:]]}"}"
 UPDATE_GITHUB_STATUS="${INPUT_UPDATE_GITHUB_STATUS:-false}"
 GITHUB_STATUS_CONTEXT="${INPUT_GITHUB_STATUS_CONTEXT:-spec42/server}"
 GITHUB_STATUS_STATE=""
@@ -217,7 +220,7 @@ PY
 
   curl --fail-with-body --silent --show-error \
     -X POST "$status_api" \
-    -H "Authorization: Bearer $GITHUB_TOKEN_INPUT" \
+    -H "Authorization: token $GITHUB_TOKEN_INPUT" \
     -H "Accept: application/vnd.github+json" \
     -H "Content-Type: application/json" \
     --data-binary "@${payload_path}" \
@@ -379,7 +382,7 @@ PY
   fi
 
   curl --fail-with-body --silent --show-error \
-    -H "Authorization: Bearer $GITHUB_TOKEN_INPUT" \
+    -H "Authorization: token $GITHUB_TOKEN_INPUT" \
     -H "Accept: application/vnd.github+json" \
     "${GITHUB_API_URL%/}/user" \
     > "$GITHUB_USER_RESPONSE_PATH"
@@ -419,7 +422,7 @@ PY
 
   COMMENTS_API_URL="${GITHUB_API_URL%/}/repos/${GITHUB_REPOSITORY}/issues/${PR_NUMBER}/comments?per_page=100"
   curl --fail-with-body --silent --show-error \
-    -H "Authorization: Bearer $GITHUB_TOKEN_INPUT" \
+    -H "Authorization: token $GITHUB_TOKEN_INPUT" \
     -H "Accept: application/vnd.github+json" \
     "$COMMENTS_API_URL" \
     > "$PR_COMMENTS_RESPONSE_PATH"
@@ -441,7 +444,7 @@ PY
   if [[ -n "$EXISTING_COMMENT_ID" ]]; then
     curl --fail-with-body --silent --show-error \
       -X PATCH "${GITHUB_API_URL%/}/repos/${GITHUB_REPOSITORY}/issues/comments/${EXISTING_COMMENT_ID}" \
-      -H "Authorization: Bearer $GITHUB_TOKEN_INPUT" \
+      -H "Authorization: token $GITHUB_TOKEN_INPUT" \
       -H "Accept: application/vnd.github+json" \
       -H "Content-Type: application/json" \
       --data-binary "@${PR_COMMENT_PAYLOAD_PATH}" \
@@ -450,7 +453,7 @@ PY
   else
     curl --fail-with-body --silent --show-error \
       -X POST "${GITHUB_API_URL%/}/repos/${GITHUB_REPOSITORY}/issues/${PR_NUMBER}/comments" \
-      -H "Authorization: Bearer $GITHUB_TOKEN_INPUT" \
+      -H "Authorization: token $GITHUB_TOKEN_INPUT" \
       -H "Accept: application/vnd.github+json" \
       -H "Content-Type: application/json" \
       --data-binary "@${PR_COMMENT_PAYLOAD_PATH}" \
